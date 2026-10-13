@@ -1,13 +1,17 @@
 import ast
 import operator
-from datetime import datetime
+from datetime import datetime,timedelta, timezone
 from ddgs import DDGS
 import requests
 from baidusearch.baidusearch import search as baidu_search
 
+# 北京时间 UTC+8
+BEIJING_TZ = timezone(timedelta(hours=8))
+
+
 def get_current_time() -> str:
-    """获取当前日期和时间"""
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    """获取当前日期和时间（北京时间）"""
+    return datetime.now(BEIJING_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def calculator(expression: str) -> str:
@@ -51,7 +55,7 @@ def calculator(expression: str) -> str:
 def save_note(note: str) -> str:
     """保存一条笔记到 notes.txt"""
     with open("notes.txt", "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now().isoformat()} - {note}\n")
+        f.write(f"{datetime.now(BEIJING_TZ).isoformat()} - {note}\n")
     return "笔记已保存到 notes.txt"
 
 
