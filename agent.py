@@ -28,7 +28,7 @@ if not API_KEY:
 client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
 
-def run_agent(user_input: str, history: list):
+def run_agent(user_input: str, history: list, on_tool_call=None):
     """执行一次 Agent 循环"""
     history.append({"role": "user", "content": user_input})
 
@@ -73,6 +73,10 @@ def run_agent(user_input: str, history: list):
                 args = json.loads(tool_call.function.arguments)
             except json.JSONDecodeError:
                 args = {}
+
+            # 通知外部：即将调用工具
+            if on_tool_call:
+                on_tool_call(name, args)
 
             func = TOOL_FUNCTIONS.get(name)
 

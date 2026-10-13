@@ -12,6 +12,14 @@ st.set_page_config(
 st.title("🤖 我的 AI Agent")
 st.caption("支持：查时间 · 算数学 · 记笔记 · 搜网页 · 查天气")
 
+TOOL_LABELS = {
+    "get_current_time": "🕐 正在查询时间",
+    "calculator": "🧮 正在计算",
+    "save_note": "📝 正在保存笔记",
+    "web_search": "🔍 正在搜索",
+    "get_weather": "🌤️ 正在查询天气",
+}
+
 # ---------- 初始化对话历史 ----------
 SYSTEM_PROMPT = (
     "你是一个有用的中文 AI 助手。"
@@ -61,9 +69,30 @@ if user_input:
         st.markdown(user_input)
 
     with st.chat_message("assistant"):
-        with st.spinner("思考中..."):
-            try:
-                answer = run_agent(user_input, st.session_state.messages)
-                st.markdown(answer)
-            except Exception as e:
-                st.error(f"出错了：{e}")
+        status = st.status("🤔 思考中...", expanded=True)
+
+        def on_tool_call(name, args):
+            label = TOOL_LABELS.get(name, f"⚙️ 正在调用 {name}")
+            # 把关键参数也显示出来，更直观
+            if name == "web_search":
+                status.write(f"{label}：{args.get('query', '')}")
+            elif name == "get_weather":
+                status.write(f"{label}：{args.get('city', '')}")
+            elif name == "calculator":
+                status.write(f"{label}：{args.get('expression', '')}")
+            elif name == "save_note":
+                status.write(f"{label}：{args.get('note', '')}")
+            else:
+                status.write(label)
+
+        try:
+            answer = run_agent(
+                user_input,
+                st.session_state.messages,
+                on_tool_call=on_tool_call,
+            )
+            status.update(label="✅ 完成", state="complete", expanded=False)
+            st.markdown(answer)
+        except Exception as e:
+            status.update(label="❌ 出错", state="error")
+            st.error(f"出错了：{e}")
