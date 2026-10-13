@@ -3,6 +3,7 @@ import operator
 from datetime import datetime,timedelta, timezone
 from ddgs import DDGS
 import requests
+from bs4 import BeautifulSoup
 from baidusearch.baidusearch import search as baidu_search
 
 # 北京时间 UTC+8
@@ -78,6 +79,66 @@ def web_search(query: str, max_results: int = 5) -> str:
         return "\n\n".join(formatted)
     except Exception as e:
         return f"搜索失败：{e}"
+
+
+def fetch_url(url: str, max_chars: int = 3000) -> str:
+    """抓取网页正文，返回纯文本（截断到 max_chars 字符）"""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        )
+    }
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.encoding = resp.apparent_encoding
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # 移除 script、style、nav 等无关内容
+        for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
+            tag.decompose()
+
+        # 提取正文文字
+        text = soup.get_text(separator="\n")
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        content = "\n".join(lines)
+
+        if len(content) > max_chars:
+            content = content[:max_chars] + "\n\n...(内容已截断)"
+
+        return content if content else "未提取到正文内容。"
+    except Exception as e:
+        return f"抓取网页失败：{e}"
+
+
+def get_exchange_rate(from_currency: str, to_currency: str, amount: float = 1.0) -> str:
+    """查询汇率并换算金额，例如 100 USD 换多少 CNY"""
+    from_currency = from_currency.upper()
+    to_currency = to_currency.upper()
+
+    url = f"https://open.er-api.com/v6/latest/{from_currency}"
+    try:
+        resp = requests.get(url, timeout=10)
+        data = resp.json()
+    except Exception as e:
+        return f"查询汇率失败：{e}"
+
+    if data.get("result") != "success":
+        return f"不支持的货币：{from_currency}"
+
+    rates = data.get("rates", {})
+    if to_currency not in rates:
+        return f"不支持的货币：{to_currency}"
+
+    rate = rates[to_currency]
+    converted = amount * rate
+
+    return (
+        f"{amount} {from_currency} = {converted:.2f} {to_currency}\n"
+        f"当前汇率：1 {from_currency} = {rate:.4f} {to_currency}"
+    )
 
 
 def _geocode_city(city: str) -> dict | None:
@@ -242,6 +303,48 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_url",
+            "description": "抓取指定 URL 的网页正文内容。当用户提供一个网址，或搜索结果需要深入了解具体页面内容时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "要抓取的网页地址，例如 'https://example.com/article'",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_exchange_rate",
+            "description": "查询两种货币之间的实时汇率，并可换算指定金额。当用户询问汇率、货币换算等问题时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_currency": {
+                        "type": "string",
+                        "description": "源货币代码，例如 'USD'、'CNY'、'EUR'、'JPY'",
+                    },
+                    "to_currency": {
+                        "type": "string",
+                        "description": "目标货币代码，例如 'CNY'、'USD'",
+                    },
+                    "amount": {
+                        "type": "number",
+                        "description": "要换算的金额，默认 1",
+                    },
+                },
+                "required": ["from_currency", "to_currency"],
+            },
+        },
+    },
 ]
 
 # 工具名到真实函数的映射
@@ -251,4 +354,6 @@ TOOL_FUNCTIONS = {
     "save_note": save_note,
     "web_search": web_search,
     "get_weather": get_weather,
+    "fetch_url": fetch_url,
+    "get_exchange_rate": get_exchange_rate,
 }
