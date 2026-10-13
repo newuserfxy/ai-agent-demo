@@ -1,6 +1,10 @@
 import streamlit as st
 
 from agent import run_agent
+from database import init_db, save_message, load_messages, clear_messages
+
+# 初始化数据库（建表）
+init_db()
 
 # ---------- 页面配置 ----------
 st.set_page_config(
@@ -32,14 +36,15 @@ SYSTEM_PROMPT = (
 )
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
+    # 从数据库加载历史
+    history = load_messages()
+    st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
 
 # ---------- 侧边栏 ----------
 with st.sidebar:
     st.header("操作")
     if st.button("🗑️ 清空对话"):
+        clear_messages()
         st.session_state.messages = [
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
@@ -68,12 +73,14 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
+    # 保存用户消息到数据库
+    save_message("user", user_input)
+
     with st.chat_message("assistant"):
         status = st.status("🤔 思考中...", expanded=True)
 
         def on_tool_call(name, args):
             label = TOOL_LABELS.get(name, f"⚙️ 正在调用 {name}")
-            # 把关键参数也显示出来，更直观
             if name == "web_search":
                 status.write(f"{label}：{args.get('query', '')}")
             elif name == "get_weather":
@@ -93,6 +100,10 @@ if user_input:
             )
             status.update(label="✅ 完成", state="complete", expanded=False)
             st.markdown(answer)
+
+            # 保存回答到数据库
+            save_message("assistant", answer)
+
         except Exception as e:
             status.update(label="❌ 出错", state="error")
             st.error(f"出错了：{e}")
