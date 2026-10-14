@@ -1,7 +1,6 @@
 import ast
 import operator
 from datetime import datetime,timedelta, timezone
-from ddgs import DDGS
 import requests
 from bs4 import BeautifulSoup
 from baidusearch.baidusearch import search as baidu_search
