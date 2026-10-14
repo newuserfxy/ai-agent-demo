@@ -5,6 +5,7 @@ from ddgs import DDGS
 import requests
 from bs4 import BeautifulSoup
 from baidusearch.baidusearch import search as baidu_search
+from rag import search_knowledge_base
 
 # 北京时间 UTC+8
 BEIJING_TZ = timezone(timedelta(hours=8))
@@ -345,6 +346,23 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge_base",
+            "description": "在用户已上传的文档知识库中检索相关内容。当用户询问关于文档、内部资料、特定事实等问题时，必须调用此工具获取资料，再基于资料回答。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "检索问题，例如 '论文的主要贡献是什么'",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 # 工具名到真实函数的映射
@@ -356,4 +374,5 @@ TOOL_FUNCTIONS = {
     "get_weather": get_weather,
     "fetch_url": fetch_url,
     "get_exchange_rate": get_exchange_rate,
+    "search_knowledge_base": search_knowledge_base,
 }

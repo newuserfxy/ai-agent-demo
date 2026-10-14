@@ -2,4 +2,7 @@
 venv/
 __pycache__/
 notes.txt
+chat_history.db
+chroma_db/
+knowledge_base.json
 .streamlit/secrets.toml

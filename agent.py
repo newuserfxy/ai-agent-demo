@@ -1,3 +1,18 @@
+import os
+import platform
+import ctypes
+from importlib.util import find_spec
+
+if platform.system() == "Windows":
+    try:
+        spec = find_spec("torch")
+        if spec and spec.origin:
+            dll_path = os.path.join(os.path.dirname(spec.origin), "lib", "c10.dll")
+            if os.path.exists(dll_path):
+                ctypes.CDLL(os.path.normpath(dll_path))
+    except Exception:
+        pass
+
 import json
 import os
 
@@ -106,13 +121,12 @@ def main():
             "role": "system",
             "content": (
                 "你是一个有用的中文 AI 助手。"
-                "你可以调用工具来获取时间、计算数学表达式、保存笔记、搜索网页、查询天气、读取网页正文。"
-                "当用户询问实时信息、新闻、最新事件，或你不确定答案时，"
-                "优先调用 web_search 工具搜索后再回答。"
-                "当用户提供一个具体网址，或需要深入了解某个网页内容时，调用 fetch_url。"
-                "当用户询问某个城市的天气、温度、是否下雨等问题时，调用 get_weather。"
-                "需要工具时请调用工具，不需要时直接回答。"
-                "当用户询问汇率、货币换算等问题时，调用 get_exchange_rate。"
+                "你可以调用工具来获取时间、计算、保存笔记、搜索网页、查询天气、读取网页正文、查询汇率、检索知识库。"
+                "【核心规则】：当用户询问任何与已知信息、文档、公司、产品或具体事实相关的问题时，"
+                "你必须**第一步先调用 search_knowledge_base 工具**检索知识库，"
+                "得到检索结果后，再基于检索结果回答。"
+                "如果检索结果中没有相关信息，你必须如实回答“知识库中未找到相关信息”，绝对不允许凭记忆编造。"
+                "只有在用户明确打招呼或闲聊时，才直接回答，不调用工具。"
             ),
         }
     ]

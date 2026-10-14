@@ -3,6 +3,10 @@ import streamlit as st
 from agent import run_agent
 from database import init_db, save_message, load_messages, clear_messages
 
+import os
+import tempfile
+from rag import add_document, clear_knowledge_base, list_documents
+
 # 初始化数据库（建表）
 init_db()
 
@@ -24,18 +28,18 @@ TOOL_LABELS = {
     "get_weather": "🌤️ 正在查询天气",
     "fetch_url": "🌐 正在读取网页",
     "get_exchange_rate": "💱 正在查询汇率",
+    "search_knowledge_base": "📚 正在检索知识库",
 }
 
 # ---------- 初始化对话历史 ----------
 SYSTEM_PROMPT = (
     "你是一个有用的中文 AI 助手。"
-    "你可以调用工具来获取时间、计算数学表达式、保存笔记、搜索网页、查询天气、读取网页正文。"
-    "当用户询问实时信息、新闻、最新事件，或你不确定答案时，"
-    "优先调用 web_search 工具搜索后再回答。"
-    "当用户提供一个具体网址，或需要深入了解某个网页内容时，调用 fetch_url。"
-    "当用户询问某个城市的天气、温度、是否下雨等问题时，调用 get_weather。"
-    "需要工具时请调用工具，不需要时直接回答。"
-    "当用户询问汇率、货币换算等问题时，调用 get_exchange_rate。"
+    "你可以调用工具来获取时间、计算、保存笔记、搜索网页、查询天气、读取网页正文、查询汇率、检索知识库。"
+    "【核心规则】：当用户询问任何与已知信息、文档、公司、产品或具体事实相关的问题时，"
+    "你必须**第一步先调用 search_knowledge_base 工具**检索知识库，"
+    "得到检索结果后，再基于检索结果回答。"
+    "如果检索结果中没有相关信息，你必须如实回答“知识库中未找到相关信息”，绝对不允许凭记忆编造。"
+    "只有在用户明确打招呼或闲聊时，才直接回答，不调用工具。"
 )
 
 if "messages" not in st.session_state:
@@ -52,6 +56,40 @@ with st.sidebar:
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
         st.rerun()
+
+    st.markdown("---")
+    st.subheader("📚 知识库")
+
+    uploaded_file = st.file_uploader(
+        "上传文档（PDF / TXT / MD）",
+        type=["pdf", "txt", "md"],
+    )
+
+    if uploaded_file is not None:
+        if st.button("加入知识库"):
+            with st.spinner("正在处理文档..."):
+                # 保存到临时文件
+                suffix = os.path.splitext(uploaded_file.name)[1]
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=suffix
+                ) as tmp:
+                    tmp.write(uploaded_file.read())
+                    tmp_path = tmp.name
+
+                try:
+                    msg = add_document(tmp_path, uploaded_file.name)
+                    st.success(msg)
+                except Exception as e:
+                    st.error(f"处理失败：{e}")
+                finally:
+                    os.unlink(tmp_path)
+
+    if st.button("📋 查看已上传文档"):
+        st.info(list_documents())
+
+    if st.button("🗑️ 清空知识库"):
+        clear_knowledge_base()
+        st.success("知识库已清空")
 
     st.markdown("---")
     st.markdown("**试试这些问题：**")
