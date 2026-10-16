@@ -5,18 +5,6 @@ import requests
 from pypdf import PdfReader
 
 
-def _get_api_key():
-    try:
-        import streamlit as st
-        return st.secrets["SILICONFLOW_API_KEY"]
-    except Exception:
-        return os.getenv("SILICONFLOW_API_KEY")
-
-
-API_KEY = _get_api_key()
-EMBEDDING_URL = "https://api.siliconflow.cn/v1/embeddings"
-EMBEDDING_MODEL = "BAAI/bge-m3"
-
 DB_FILE = "./knowledge_base.json"
 
 
@@ -34,23 +22,20 @@ def _save_db(db: dict):
         json.dump(db, f, ensure_ascii=False)
 
 
-def _embed(texts: list[str]) -> list[list[float]]:
-    """调用硅基流动 embedding API"""
-    if not API_KEY:
-        raise ValueError("未配置 SILICONFLOW_API_KEY")
+OLLAMA_EMBED_URL = "http://localhost:11434/api/embed"
+OLLAMA_EMBED_MODEL = "nomic-embed-text"
 
+
+def _embed(texts: list[str]) -> list[list[float]]:
+    """调用本地 Ollama 嵌入模型"""
     resp = requests.post(
-        EMBEDDING_URL,
-        headers={
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={"model": EMBEDDING_MODEL, "input": texts},
-        timeout=30,
+        OLLAMA_EMBED_URL,
+        json={"model": OLLAMA_EMBED_MODEL, "input": texts},
+        timeout=60,
     )
     resp.raise_for_status()
     data = resp.json()
-    return [item["embedding"] for item in data["data"]]
+    return data["embeddings"]
 
 
 def extract_text_from_file(file_path: str) -> str:

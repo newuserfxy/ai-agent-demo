@@ -33,9 +33,9 @@ def get_config(key, default=None):
         return os.getenv(key, default)
 
 
-API_KEY = get_config("API_KEY")
-BASE_URL = get_config("BASE_URL", "https://api.deepseek.com")
-MODEL = get_config("MODEL", "deepseek-chat")
+API_KEY = get_config("API_KEY", "ollama")
+BASE_URL = get_config("BASE_URL", "http://localhost:11434/v1/")
+MODEL = get_config("MODEL", "qwen2.5:7b")
 
 if not API_KEY:
     raise ValueError("请先在 .env 或 Streamlit secrets 中设置 API_KEY")
