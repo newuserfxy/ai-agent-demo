@@ -6,5 +6,7 @@ chat_history.db
 chroma_db/
 knowledge_base.json
 .streamlit/secrets.toml
+.streamlit/secrets.local.toml
+.streamlit/secrets.cloud.toml
 .env.local
 .env.cloud
